@@ -1,4 +1,4 @@
-# Retro Game Market
+Nope # Retro Game Market
 
 A learning-focused e-commerce frontend built with **Next.js**, **React**, and **TypeScript** for browsing and managing a retro video game store.
 

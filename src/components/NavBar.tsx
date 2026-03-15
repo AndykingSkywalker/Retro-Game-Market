@@ -11,8 +11,6 @@ const links = [
   { href: "/cart", label: "Checkout" },
 ];
 
-const PROFILE_IMAGE_KEY = "rgm_profile_image";
-
 function StoreIcon() {
   return (
     <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2">
@@ -112,10 +110,8 @@ export default function NavBar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
-  const profileImage =
-    user && typeof window !== "undefined"
-      ? localStorage.getItem(PROFILE_IMAGE_KEY)
-      : null;
+  const profileImage = user?.profilePicture ?? null;
+  const profileInitial = user?.username?.trim().charAt(0).toUpperCase() || "N/A";
 
   useEffect(() => {
     function onPointerDown(event: MouseEvent) {
@@ -191,7 +187,7 @@ export default function NavBar() {
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={profileImage} alt="Profile" className="h-full w-full object-cover" />
                   ) : (
-                    <span>N/A</span>
+                    <span>{profileInitial}</span>
                   )}
                 </button>
 

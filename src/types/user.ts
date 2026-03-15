@@ -4,6 +4,7 @@ export interface User {
   id: number;
   username: string;
   email: string;
+  profilePicture?: string;
   role: UserRole;
 }
 
@@ -11,12 +12,14 @@ export interface UserCreateRequest {
   username: string;
   email: string;
   password: string;
+  profilePicture?: string;
 }
 
 export interface UserUpdateRequest {
   username?: string;
   email?: string;
   password?: string;
+  profilePicture?: string;
 }
 
 export interface LoginRequest {

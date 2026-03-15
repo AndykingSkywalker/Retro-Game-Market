@@ -15,6 +15,12 @@ function formatPrice(value: number): string {
 }
 
 export default function ProductCard({ product, onAddToCart }: ProductCardProps) {
+  const discount = product.onSale ? product.saleDiscountPercent ?? 0 : 0;
+  const hasDiscount = discount > 0;
+  const discountedPrice = hasDiscount
+    ? Math.max(0, product.price * (1 - discount / 100))
+    : product.price;
+
   return (
     <article className="flex h-full flex-col rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
       <div className="mb-3 aspect-[4/3] overflow-hidden rounded-lg bg-zinc-100">
@@ -38,17 +44,28 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
       </p>
 
       <div className="mt-3 flex items-center gap-2">
-        <span className="text-lg font-bold text-zinc-900">{formatPrice(product.price)}</span>
+        {hasDiscount ? (
+          <>
+            <span className="text-sm font-semibold text-zinc-600 line-through">
+              WAS {formatPrice(product.price)}
+            </span>
+            <span className="text-lg font-bold text-zinc-900">
+              NOW {formatPrice(discountedPrice)}
+            </span>
+          </>
+        ) : (
+          <span className="text-lg font-bold text-zinc-900">{formatPrice(product.price)}</span>
+        )}
         {product.onSale ? (
           <span className="rounded-full bg-green-100 px-2 py-1 text-sm font-semibold text-green-800">
-            On Sale
+            On Sale{hasDiscount ? ` ${discount}%` : ""}
           </span>
         ) : null}
       </div>
 
-      <p className="mt-2 text-zinc-700">
-        {product.inStock ? `${product.stockLevel} in stock` : "Out of stock"}
-      </p>
+      {!product.inStock ? (
+        <p className="mt-2 text-center font-bold text-red-700">Out of stock</p>
+      ) : null}
 
       {product.inStock ? (
         <button

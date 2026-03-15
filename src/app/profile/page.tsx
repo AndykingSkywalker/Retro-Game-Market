@@ -1,9 +1,7 @@
 "use client";
 
-import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useStore } from "@/components/StoreProvider";
-
-const PROFILE_IMAGE_KEY = "rgm_profile_image";
 
 export default function ProfilePage() {
   const { user, updateProfile } = useStore();
@@ -11,36 +9,20 @@ export default function ProfilePage() {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [profilePicture, setProfilePicture] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    if (user) {
-      setUsername(user.username);
-      setEmail(user.email);
+    if (!user) {
+      setProfilePicture("");
+      return;
     }
 
-    const savedImage = localStorage.getItem(PROFILE_IMAGE_KEY);
-    if (savedImage) {
-      setProfileImage(savedImage);
-    }
+    setUsername(user.username);
+    setEmail(user.email);
+    setProfilePicture(user.profilePicture ?? "");
   }, [user]);
-
-  function handleImageChange(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      const value = typeof reader.result === "string" ? reader.result : null;
-      if (value) {
-        setProfileImage(value);
-        localStorage.setItem(PROFILE_IMAGE_KEY, value);
-      }
-    };
-    reader.readAsDataURL(file);
-  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -55,6 +37,7 @@ export default function ProfilePage() {
         username,
         email,
         password: password || undefined,
+        profilePicture: profilePicture.trim() || undefined,
       });
       setPassword("");
       setMessage("Profile updated.");
@@ -81,19 +64,20 @@ export default function ProfilePage() {
 
       <div className="mt-5 flex items-center gap-4">
         <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-zinc-200">
-          {profileImage ? (
+          {profilePicture ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={profileImage} alt="Profile" className="h-full w-full object-cover" />
+            <img src={profilePicture} alt="Profile" className="h-full w-full object-cover" />
           ) : (
             <span className="text-xs text-zinc-500">No photo</span>
           )}
         </div>
         <label className="ui-label">
-          Profile picture
+          Profile picture URL
           <input
-            type="file"
-            accept="image/*"
-            onChange={handleImageChange}
+            type="url"
+            value={profilePicture}
+            onChange={(event) => setProfilePicture(event.target.value)}
+            placeholder="https://example.com/avatar.jpg"
             className="ui-input"
           />
         </label>

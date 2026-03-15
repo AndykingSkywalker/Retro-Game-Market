@@ -8,6 +8,7 @@ export interface Product {
   imageUrl?: string;
   inStock: boolean;
   onSale: boolean;
+  saleDiscountPercent?: number;
 }
 
 export interface ProductFilters {
@@ -23,8 +24,8 @@ export interface ProductCreateRequest {
   stockLevel: number;
   price: number;
   imageUrl?: string;
-  inStock: boolean;
   onSale: boolean;
+  saleDiscountPercent?: number;
 }
 
 export interface ProductUpdateRequest extends ProductCreateRequest {

@@ -11,6 +11,7 @@ export default function RegisterPage() {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [profilePicture, setProfilePicture] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
 
@@ -20,7 +21,12 @@ export default function RegisterPage() {
     setLocalError(null);
 
     try {
-      await signUp({ username, email, password });
+      await signUp({
+        username,
+        email,
+        password,
+        profilePicture: profilePicture.trim() || undefined,
+      });
       router.push("/");
     } catch {
       setLocalError("Could not create account. Please try different details.");
@@ -72,6 +78,19 @@ export default function RegisterPage() {
             aria-invalid={Boolean(localError)}
             required
             minLength={6}
+          />
+        </label>
+
+        <label className="ui-label">
+          Profile picture URL (optional)
+          <input
+            id="register-profile-picture"
+            type="url"
+            value={profilePicture}
+            onChange={(event) => setProfilePicture(event.target.value)}
+            className="ui-input"
+            aria-invalid={Boolean(localError)}
+            placeholder="https://example.com/avatar.jpg"
           />
         </label>
 

@@ -5,6 +5,8 @@ import { useStore } from "@/components/StoreProvider";
 import { createItem, getErrorMessage, getItems, updateItem } from "@/lib/api";
 import type { Product, ProductCreateRequest, ProductUpdateRequest } from "@/types/product";
 
+const DISCOUNT_OPTIONS = [0, 10, 20, 30, 40, 50, 60, 70, 80];
+
 function toUpdatePayload(product: Product): ProductUpdateRequest {
   return {
     itemName: product.itemName,
@@ -13,8 +15,8 @@ function toUpdatePayload(product: Product): ProductUpdateRequest {
     stockLevel: product.stockLevel,
     price: product.price,
     imageUrl: product.imageUrl,
-    inStock: product.inStock,
     onSale: product.onSale,
+    saleDiscountPercent: product.saleDiscountPercent ?? 0,
   };
 }
 
@@ -25,8 +27,8 @@ const emptyCreateForm: ProductCreateRequest = {
   stockLevel: 0,
   price: 0,
   imageUrl: "",
-  inStock: true,
   onSale: false,
+  saleDiscountPercent: 0,
 };
 
 export default function AdminPage() {
@@ -38,6 +40,7 @@ export default function AdminPage() {
   const [saleOnly, setSaleOnly] = useState(false);
   const [drafts, setDrafts] = useState<Record<number, ProductUpdateRequest>>({});
   const [createForm, setCreateForm] = useState<ProductCreateRequest>(emptyCreateForm);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isFetching, setIsFetching] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   const [savingId, setSavingId] = useState<number | null>(null);
@@ -132,6 +135,7 @@ export default function AdminPage() {
         imageUrl: createForm.imageUrl?.trim() ? createForm.imageUrl : undefined,
       });
       setCreateForm(emptyCreateForm);
+      setIsCreateOpen(false);
       await loadItems();
     } catch (createError) {
       setError(getErrorMessage(createError));
@@ -139,6 +143,29 @@ export default function AdminPage() {
       setIsCreating(false);
     }
   }
+
+  function clearFilters() {
+    setSearch("");
+    setConsoleFilter("all");
+    setGenreFilter("all");
+    setSaleOnly(false);
+  }
+
+  function isRowDirty(item: Product, draft: ProductUpdateRequest): boolean {
+    return (
+      item.itemName !== draft.itemName ||
+      item.console !== draft.console ||
+      item.genre !== draft.genre ||
+      item.price !== draft.price ||
+      item.stockLevel !== draft.stockLevel ||
+      (item.imageUrl ?? "") !== (draft.imageUrl ?? "") ||
+      item.onSale !== draft.onSale ||
+      (item.saleDiscountPercent ?? 0) !== (draft.saleDiscountPercent ?? 0)
+    );
+  }
+
+  const onSaleCount = useMemo(() => items.filter((item) => item.onSale).length, [items]);
+  const outOfStockCount = useMemo(() => items.filter((item) => !item.inStock).length, [items]);
 
   if (isLoading) {
     return <p>Loading account...</p>;
@@ -164,9 +191,43 @@ export default function AdminPage() {
 
   return (
     <section className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-zinc-900">Admin Inventory</h1>
-        <p className="mt-1 text-zinc-700">Search, update, and create store items.</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-3xl font-bold text-zinc-900">Admin Inventory</h1>
+          <p className="mt-1 text-zinc-700">Search, edit, and publish products from one place.</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            className="ui-button-secondary"
+            onClick={() => void loadItems()}
+            disabled={isFetching}
+          >
+            {isFetching ? "Refreshing..." : "Refresh"}
+          </button>
+          <button
+            type="button"
+            className="ui-button"
+            onClick={() => setIsCreateOpen((previous) => !previous)}
+          >
+            {isCreateOpen ? "Close Create Panel" : "Create New Item"}
+          </button>
+        </div>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div className="ui-card p-3">
+          <p className="text-sm ui-muted">Total items</p>
+          <p className="text-2xl font-bold text-zinc-900">{items.length}</p>
+        </div>
+        <div className="ui-card p-3">
+          <p className="text-sm ui-muted">On sale</p>
+          <p className="text-2xl font-bold text-zinc-900">{onSaleCount}</p>
+        </div>
+        <div className="ui-card p-3">
+          <p className="text-sm ui-muted">Out of stock</p>
+          <p className="text-2xl font-bold text-zinc-900">{outOfStockCount}</p>
+        </div>
       </div>
 
       {error ? (
@@ -175,87 +236,117 @@ export default function AdminPage() {
         </p>
       ) : null}
 
-      <form onSubmit={handleCreate} className="ui-card space-y-3 p-4">
-        <h2 className="text-xl font-semibold text-zinc-900">Create Item</h2>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <input
-            value={createForm.itemName}
-            onChange={(event) => handleCreateChange("itemName", event.target.value)}
-            placeholder="Item name"
-            className="ui-input"
-            aria-label="New item name"
-            required
-          />
-          <input
-            value={createForm.console}
-            onChange={(event) => handleCreateChange("console", event.target.value)}
-            placeholder="Console"
-            className="ui-input"
-            aria-label="New item console"
-            required
-          />
-          <input
-            value={createForm.genre}
-            onChange={(event) => handleCreateChange("genre", event.target.value)}
-            placeholder="Genre"
-            className="ui-input"
-            aria-label="New item genre"
-            required
-          />
-          <input
-            type="number"
-            min={0}
-            value={createForm.price}
-            onChange={(event) => handleCreateChange("price", Number(event.target.value))}
-            placeholder="Price"
-            className="ui-input"
-            aria-label="New item price"
-            required
-          />
-          <input
-            type="number"
-            min={0}
-            value={createForm.stockLevel}
-            onChange={(event) => handleCreateChange("stockLevel", Number(event.target.value))}
-            placeholder="Stock"
-            className="ui-input"
-            aria-label="New item stock level"
-            required
-          />
-          <input
-            value={createForm.imageUrl ?? ""}
-            onChange={(event) => handleCreateChange("imageUrl", event.target.value)}
-            placeholder="Image URL"
-            className="ui-input"
-            aria-label="New item image URL"
-          />
-          <label className="flex items-center gap-2 rounded-md border border-zinc-300 px-3 py-2 font-semibold text-zinc-900">
+      {isCreateOpen ? (
+        <form onSubmit={handleCreate} className="ui-card space-y-3 p-4">
+          <h2 className="text-xl font-semibold text-zinc-900">Create Item</h2>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <input
-              type="checkbox"
-              checked={createForm.inStock}
-              onChange={(event) => handleCreateChange("inStock", event.target.checked)}
+              value={createForm.itemName}
+              onChange={(event) => handleCreateChange("itemName", event.target.value)}
+              placeholder="Item name"
+              className="ui-input"
+              aria-label="New item name"
+              required
             />
-            In stock
-          </label>
-          <label className="flex items-center gap-2 rounded-md border border-zinc-300 px-3 py-2 font-semibold text-zinc-900">
             <input
-              type="checkbox"
-              checked={createForm.onSale}
-              onChange={(event) => handleCreateChange("onSale", event.target.checked)}
+              value={createForm.console}
+              onChange={(event) => handleCreateChange("console", event.target.value)}
+              placeholder="Console"
+              className="ui-input"
+              aria-label="New item console"
+              required
             />
-            On sale
-          </label>
-        </div>
-        <button
-          type="submit"
-          disabled={isCreating}
-          className="ui-button disabled:opacity-60"
-        >
-          {isCreating ? "Creating..." : "Create Item"}
-        </button>
-      </form>
+            <input
+              value={createForm.genre}
+              onChange={(event) => handleCreateChange("genre", event.target.value)}
+              placeholder="Genre"
+              className="ui-input"
+              aria-label="New item genre"
+              required
+            />
+            <input
+              type="number"
+              min={0}
+              step="0.01"
+              value={createForm.price}
+              onChange={(event) => handleCreateChange("price", Number(event.target.value))}
+              placeholder="Price"
+              className="ui-input"
+              aria-label="New item price"
+              required
+            />
+            <input
+              type="number"
+              min={0}
+              value={createForm.stockLevel}
+              onChange={(event) => handleCreateChange("stockLevel", Number(event.target.value))}
+              placeholder="Stock"
+              className="ui-input"
+              aria-label="New item stock level"
+              required
+            />
+            <input
+              value={createForm.imageUrl ?? ""}
+              onChange={(event) => handleCreateChange("imageUrl", event.target.value)}
+              placeholder="Image URL"
+              className="ui-input"
+              aria-label="New item image URL"
+            />
+            <label className="flex items-center gap-2 rounded-md border border-zinc-300 px-3 py-2 font-semibold text-zinc-900">
+              <input
+                type="checkbox"
+                checked={createForm.onSale}
+                onChange={(event) => {
+                  const checked = event.target.checked;
+                  handleCreateChange("onSale", checked);
+                  if (!checked) {
+                    handleCreateChange("saleDiscountPercent", 0);
+                  } else if (!createForm.saleDiscountPercent) {
+                    handleCreateChange("saleDiscountPercent", 10);
+                  }
+                }}
+              />
+              On sale
+            </label>
+            <label className="ui-label">
+              Sale discount
+              <select
+                value={createForm.saleDiscountPercent ?? 0}
+                onChange={(event) =>
+                  handleCreateChange("saleDiscountPercent", Number(event.target.value))
+                }
+                className="ui-select"
+                disabled={!createForm.onSale}
+                aria-label="New item sale discount"
+              >
+                {DISCOUNT_OPTIONS.map((value) => (
+                  <option key={value} value={value}>
+                    {value === 0 ? "No discount" : `${value}% off`}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="submit"
+              disabled={isCreating}
+              className="ui-button disabled:opacity-60"
+            >
+              {isCreating ? "Creating..." : "Create Item"}
+            </button>
+            <button
+              type="button"
+              className="ui-button-secondary"
+              onClick={() => setCreateForm(emptyCreateForm)}
+            >
+              Reset
+            </button>
+          </div>
+        </form>
+      ) : null}
 
-      <div className="ui-card grid gap-3 p-4 sm:grid-cols-4">
+      <div className="ui-card grid gap-3 p-4 sm:grid-cols-5">
         <input
           value={search}
           onChange={(event) => setSearch(event.target.value)}
@@ -295,94 +386,157 @@ export default function AdminPage() {
           />
           Show on-sale items only
         </label>
+        <div className="sm:col-span-1 flex justify-end">
+          <button type="button" onClick={clearFilters} className="ui-button-secondary">
+            Clear filters
+          </button>
+        </div>
       </div>
 
       {isFetching ? <p>Loading items...</p> : null}
 
       {!isFetching ? (
-        <div className="space-y-3">
-          {visibleItems.map((item) => {
-            const draft = drafts[item.id] ?? toUpdatePayload(item);
-            return (
-              <article key={item.id} className="ui-card p-4">
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                  <input
-                    value={draft.itemName}
-                    onChange={(event) => handleDraftChange(item.id, "itemName", event.target.value)}
-                    className="ui-input"
-                    aria-label={`Item ${item.id} name`}
-                  />
-                  <input
-                    value={draft.console}
-                    onChange={(event) => handleDraftChange(item.id, "console", event.target.value)}
-                    className="ui-input"
-                    aria-label={`Item ${item.id} console`}
-                  />
-                  <input
-                    value={draft.genre}
-                    onChange={(event) => handleDraftChange(item.id, "genre", event.target.value)}
-                    className="ui-input"
-                    aria-label={`Item ${item.id} genre`}
-                  />
-                  <input
-                    type="number"
-                    min={0}
-                    value={draft.price}
-                    onChange={(event) => handleDraftChange(item.id, "price", Number(event.target.value))}
-                    className="ui-input"
-                    aria-label={`Item ${item.id} price`}
-                  />
-                  <input
-                    type="number"
-                    min={0}
-                    value={draft.stockLevel}
-                    onChange={(event) => handleDraftChange(item.id, "stockLevel", Number(event.target.value))}
-                    className="ui-input"
-                    aria-label={`Item ${item.id} stock level`}
-                  />
-                  <input
-                    value={draft.imageUrl ?? ""}
-                    onChange={(event) => handleDraftChange(item.id, "imageUrl", event.target.value)}
-                    placeholder="Image URL"
-                    className="ui-input"
-                    aria-label={`Item ${item.id} image URL`}
-                  />
-                  <label className="flex items-center gap-2 rounded-md border border-zinc-300 px-3 py-2 font-semibold text-zinc-900">
-                    <input
-                      type="checkbox"
-                      checked={draft.inStock}
-                      onChange={(event) => handleDraftChange(item.id, "inStock", event.target.checked)}
-                    />
-                    In stock
-                  </label>
-                  <label className="flex items-center gap-2 rounded-md border border-zinc-300 px-3 py-2 font-semibold text-zinc-900">
-                    <input
-                      type="checkbox"
-                      checked={draft.onSale}
-                      onChange={(event) => handleDraftChange(item.id, "onSale", event.target.checked)}
-                    />
-                    On sale
-                  </label>
-                </div>
-                <div className="mt-3 flex justify-end">
-                  <button
-                    type="button"
-                    onClick={() => handleSave(item.id)}
-                    disabled={savingId === item.id}
-                    className="ui-button disabled:opacity-60"
-                  >
-                    {savingId === item.id ? "Saving..." : "Save"}
-                  </button>
-                </div>
-              </article>
-            );
-          })}
-
-          {visibleItems.length === 0 ? (
-            <p className="rounded-xl border border-zinc-200 bg-white p-4 text-zinc-700">
-              No items match the current filters.
-            </p>
-          ) : null}
+        <div className="ui-card overflow-x-auto p-0">
+          {visibleItems.length > 0 ? (
+            <table className="min-w-[980px] w-full text-sm">
+              <thead>
+                <tr className="border-b border-zinc-200 text-left text-zinc-700">
+                  <th className="px-3 py-3 font-semibold">Item</th>
+                  <th className="px-3 py-3 font-semibold">Console</th>
+                  <th className="px-3 py-3 font-semibold">Genre</th>
+                  <th className="px-3 py-3 font-semibold">Price</th>
+                  <th className="px-3 py-3 font-semibold">Stock</th>
+                  <th className="px-3 py-3 font-semibold">Image URL</th>
+                  <th className="px-3 py-3 font-semibold">In Stock</th>
+                  <th className="px-3 py-3 font-semibold">On Sale</th>
+                  <th className="px-3 py-3 font-semibold">Discount</th>
+                  <th className="px-3 py-3 font-semibold text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {visibleItems.map((item) => {
+                  const draft = drafts[item.id] ?? toUpdatePayload(item);
+                  const isDirty = isRowDirty(item, draft);
+                  return (
+                    <tr key={item.id} className="border-b border-zinc-200 align-top">
+                      <td className="px-3 py-2">
+                        <input
+                          value={draft.itemName}
+                          onChange={(event) => handleDraftChange(item.id, "itemName", event.target.value)}
+                          className="ui-input mt-0"
+                          aria-label={`Item ${item.id} name`}
+                        />
+                      </td>
+                      <td className="px-3 py-2">
+                        <input
+                          value={draft.console}
+                          onChange={(event) => handleDraftChange(item.id, "console", event.target.value)}
+                          className="ui-input mt-0"
+                          aria-label={`Item ${item.id} console`}
+                        />
+                      </td>
+                      <td className="px-3 py-2">
+                        <input
+                          value={draft.genre}
+                          onChange={(event) => handleDraftChange(item.id, "genre", event.target.value)}
+                          className="ui-input mt-0"
+                          aria-label={`Item ${item.id} genre`}
+                        />
+                      </td>
+                      <td className="px-3 py-2">
+                        <input
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          value={draft.price}
+                          onChange={(event) => handleDraftChange(item.id, "price", Number(event.target.value))}
+                          className="ui-input mt-0"
+                          aria-label={`Item ${item.id} price`}
+                        />
+                      </td>
+                      <td className="px-3 py-2">
+                        <input
+                          type="number"
+                          min={0}
+                          value={draft.stockLevel}
+                          onChange={(event) => handleDraftChange(item.id, "stockLevel", Number(event.target.value))}
+                          className="ui-input mt-0"
+                          aria-label={`Item ${item.id} stock level`}
+                        />
+                      </td>
+                      <td className="px-3 py-2">
+                        <input
+                          value={draft.imageUrl ?? ""}
+                          onChange={(event) => handleDraftChange(item.id, "imageUrl", event.target.value)}
+                          className="ui-input mt-0"
+                          placeholder="https://..."
+                          aria-label={`Item ${item.id} image URL`}
+                        />
+                      </td>
+                      <td className="px-3 py-2">
+                        <span
+                          className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
+                            draft.stockLevel > 0
+                              ? "bg-green-100 text-green-800"
+                              : "bg-red-100 text-red-800"
+                          }`}
+                        >
+                          {draft.stockLevel > 0 ? "Yes" : "No"}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2">
+                        <label className="inline-flex items-center gap-2 font-semibold">
+                          <input
+                            type="checkbox"
+                            checked={draft.onSale}
+                            onChange={(event) => {
+                              const checked = event.target.checked;
+                              handleDraftChange(item.id, "onSale", checked);
+                              if (!checked) {
+                                handleDraftChange(item.id, "saleDiscountPercent", 0);
+                              } else if (!(draft.saleDiscountPercent ?? 0)) {
+                                handleDraftChange(item.id, "saleDiscountPercent", 10);
+                              }
+                            }}
+                          />
+                          Yes
+                        </label>
+                      </td>
+                      <td className="px-3 py-2">
+                        <select
+                          value={draft.saleDiscountPercent ?? 0}
+                          onChange={(event) =>
+                            handleDraftChange(item.id, "saleDiscountPercent", Number(event.target.value))
+                          }
+                          className="ui-select mt-0"
+                          disabled={!draft.onSale}
+                          aria-label={`Item ${item.id} sale discount`}
+                        >
+                          {DISCOUNT_OPTIONS.map((value) => (
+                            <option key={value} value={value}>
+                              {value === 0 ? "No discount" : `${value}% off`}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="px-3 py-2 text-right">
+                        <button
+                          type="button"
+                          onClick={() => handleSave(item.id)}
+                          disabled={savingId === item.id || !isDirty}
+                          className="ui-button disabled:opacity-50"
+                        >
+                          {savingId === item.id ? "Saving..." : isDirty ? "Save" : "Saved"}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          ) : (
+            <p className="p-4 text-zinc-700">No items match the current filters.</p>
+          )}
         </div>
       ) : null}
     </section>
