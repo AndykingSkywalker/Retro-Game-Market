@@ -11,7 +11,14 @@ export default function HomePage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [localError, setLocalError] = useState<string | null>(null);
-  const { addToCart, user, isLoading: isSessionLoading } = useStore();
+  const {
+    cart,
+    wishlist,
+    toggleWishlistItem,
+    updateCartItemQuantity,
+    user,
+    isLoading: isSessionLoading,
+  } = useStore();
 
   useEffect(() => {
     if (!user) {
@@ -37,6 +44,16 @@ export default function HomePage() {
   const featuredOnSale = useMemo(
     () => products.filter((product) => product.onSale).slice(0, 6),
     [products],
+  );
+
+  const quantitiesByItemId = useMemo(
+    () => new Map((cart?.items ?? []).map((item) => [item.itemId, item.quantity])),
+    [cart],
+  );
+
+  const wishlistedItemIds = useMemo(
+    () => new Set((wishlist?.items ?? []).map((item) => item.itemId)),
+    [wishlist],
   );
 
   if (isSessionLoading) {
@@ -94,7 +111,14 @@ export default function HomePage() {
         featuredOnSale.length > 0 ? (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {featuredOnSale.map((product) => (
-              <ProductCard key={product.id} product={product} onAddToCart={addToCart} />
+              <ProductCard
+                key={product.id}
+                product={product}
+                quantityInCart={quantitiesByItemId.get(product.id) ?? 0}
+                isWishlisted={wishlistedItemIds.has(product.id)}
+                onChangeQuantity={updateCartItemQuantity}
+                onToggleWishlist={toggleWishlistItem}
+              />
             ))}
           </div>
         ) : (

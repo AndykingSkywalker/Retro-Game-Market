@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useEffect } from "react";
 import CartItem from "@/components/CartItem";
 import { useStore } from "@/components/StoreProvider";
 
@@ -12,21 +14,15 @@ function formatPrice(value: number): string {
 }
 
 export default function CartDrawer() {
+  const pathname = usePathname();
   const { cart, isCartOpen, setIsCartOpen, removeFromCart, clearCart, user } = useStore();
 
+  useEffect(() => {
+    setIsCartOpen(false);
+  }, [pathname, setIsCartOpen]);
+
   if (!isCartOpen) {
-    return (
-      <button
-        type="button"
-        onClick={() => setIsCartOpen(true)}
-        aria-label="Open basket drawer"
-        aria-expanded={false}
-        aria-controls="basket-drawer"
-        className="fixed right-0 top-1/3 z-30 rounded-l-lg border border-zinc-400 bg-white px-3 py-4 text-sm font-semibold text-zinc-900 shadow"
-      >
-        Basket
-      </button>
-    );
+    return null;
   }
 
   return (
@@ -40,10 +36,12 @@ export default function CartDrawer() {
         <button
           type="button"
           onClick={() => setIsCartOpen(false)}
-          aria-label="Close basket drawer"
-          className="ui-button-secondary px-2 py-1"
+          aria-label="Close basket"
+          className="ui-button-secondary inline-flex h-9 w-9 items-center justify-center px-0"
         >
-          Close
+          <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M6 6l12 12M18 6L6 18" />
+          </svg>
         </button>
       </div>
 
@@ -68,6 +66,7 @@ export default function CartDrawer() {
         <div className="flex gap-2">
           <Link
             href="/cart"
+            onClick={() => setIsCartOpen(false)}
             className="ui-button flex-1 text-center"
           >
             Checkout

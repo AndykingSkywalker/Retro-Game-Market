@@ -1,12 +1,14 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState, type FormEvent } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useStore } from "@/components/StoreProvider";
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { signIn } = useStore();
+  const redirectedFromProtectedRoute = Boolean(searchParams.get("next"));
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -20,7 +22,11 @@ export default function LoginPage() {
 
     try {
       await signIn(username, password);
-      router.push("/");
+      const nextPath = searchParams.get("next");
+      const safeNextPath = nextPath && nextPath.startsWith("/") && !nextPath.startsWith("//")
+        ? nextPath
+        : "/";
+      router.push(safeNextPath);
     } catch {
       setLocalError("Login failed. Check your username and password.");
     } finally {
@@ -31,7 +37,13 @@ export default function LoginPage() {
   return (
     <section className="ui-card mx-auto w-full max-w-md p-6 shadow-sm">
       <h1 className="text-2xl font-semibold text-zinc-900">Login</h1>
-      <p className="mt-1 text-zinc-700">Access your account to manage your basket.</p>
+      <p className="mt-1 text-zinc-700">Sign in to continue to your account.</p>
+
+      {redirectedFromProtectedRoute ? (
+        <p className="mt-3 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-800" role="status" aria-live="polite">
+          Please sign in to continue.
+        </p>
+      ) : null}
 
       <form className="mt-5 space-y-4" onSubmit={handleSubmit}>
         <label className="ui-label">
@@ -75,6 +87,14 @@ export default function LoginPage() {
         </button>
       </form>
     </section>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="ui-card mx-auto w-full max-w-md p-6">Loading...</div>}>
+      <LoginForm />
+    </Suspense>
   );
 }
 

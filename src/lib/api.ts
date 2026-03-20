@@ -14,6 +14,12 @@ import type {
   ProductCreateRequest,
   ProductUpdateRequest,
 } from "@/types/product";
+import type { Order, OrderLine } from "@/types/order";
+import type {
+  UserWishlistSummary,
+  WishlistAddItemRequest,
+  WishlistItemSummary,
+} from "@/types/wishlist";
 import { getToken } from "@/lib/auth";
 
 interface ItemResponseDto {
@@ -70,6 +76,54 @@ interface UserCartSummaryDto {
   email: string;
   items: CartItemSummaryDto[];
   total: number;
+}
+
+interface WishlistAddItemRequestDto {
+  itemId: number;
+}
+
+interface WishlistItemSummaryDto {
+  itemId: number;
+  itemName: string;
+  console: string;
+  genre: string;
+  price: number;
+  imageUrl?: string;
+  onSale: boolean;
+  saleDiscountPercent?: number;
+}
+
+interface UserWishlistSummaryDto {
+  userId: number;
+  username: string;
+  email: string;
+  items: WishlistItemSummaryDto[];
+}
+
+interface OrderLineResponseDto {
+  itemId: number;
+  itemName: string;
+  console: string;
+  genre: string;
+  imageUrl?: string;
+  unitPrice: number;
+  onSale: boolean;
+  saleDiscountPercent?: number;
+  discountedUnitPrice?: number;
+  quantity: number;
+  lineTotal: number;
+}
+
+interface OrderResponseDto {
+  id: number;
+  orderNumber: string;
+  userId: number;
+  username: string;
+  createdAt: string;
+  lineItemCount: number;
+  totalQuantity: number;
+  totalAmount: number;
+  items: OrderLineResponseDto[];
 }
 
 const API_BASE_URL =
@@ -145,6 +199,58 @@ function mapCartSummaryDto(cart: UserCartSummaryDto): UserCartSummary {
       quantity: item.quantity,
     })),
     total: cart.total,
+  };
+}
+
+function mapOrderLineDto(item: OrderLineResponseDto): OrderLine {
+  return {
+    itemId: item.itemId,
+    itemName: item.itemName,
+    console: item.console,
+    genre: item.genre,
+    imageUrl: item.imageUrl,
+    unitPrice: item.unitPrice,
+    onSale: item.onSale,
+    saleDiscountPercent: item.saleDiscountPercent ?? 0,
+    discountedUnitPrice: item.discountedUnitPrice,
+    quantity: item.quantity,
+    lineTotal: item.lineTotal,
+  };
+}
+
+function mapOrderDto(order: OrderResponseDto): Order {
+  return {
+    id: order.id,
+    orderNumber: order.orderNumber,
+    userId: order.userId,
+    username: order.username,
+    createdAt: order.createdAt,
+    lineItemCount: order.lineItemCount,
+    totalQuantity: order.totalQuantity,
+    totalAmount: order.totalAmount,
+    items: order.items.map(mapOrderLineDto),
+  };
+}
+
+function mapWishlistItemDto(item: WishlistItemSummaryDto): WishlistItemSummary {
+  return {
+    itemId: item.itemId,
+    itemName: item.itemName,
+    console: item.console,
+    genre: item.genre,
+    price: item.price,
+    imageUrl: item.imageUrl,
+    onSale: item.onSale,
+    saleDiscountPercent: item.saleDiscountPercent ?? 0,
+  };
+}
+
+function mapWishlistSummaryDto(wishlist: UserWishlistSummaryDto): UserWishlistSummary {
+  return {
+    userId: wishlist.userId,
+    username: wishlist.username,
+    email: wishlist.email,
+    items: wishlist.items.map(mapWishlistItemDto),
   };
 }
 
@@ -321,6 +427,75 @@ export async function removeItemFromCart(
 export async function clearCartByUserId(userId: number): Promise<void> {
   await apiRequest<void>(
     `/api/carts/users/${userId}`,
+    {
+      method: "DELETE",
+    },
+    true,
+  );
+}
+
+export async function checkout(userId: number): Promise<Order> {
+  const placed = await apiRequest<OrderResponseDto>(
+    `/api/orders/users/${userId}/checkout`,
+    {
+      method: "POST",
+    },
+    true,
+  );
+
+  return mapOrderDto(placed);
+}
+
+export async function getOrderHistory(userId: number): Promise<Order[]> {
+  const orders = await apiRequest<OrderResponseDto[]>(
+    `/api/orders/users/${userId}`,
+    { method: "GET" },
+    true,
+  );
+
+  return orders.map(mapOrderDto);
+}
+
+export async function getWishlistByUserId(userId: number): Promise<UserWishlistSummary> {
+  const wishlist = await apiRequest<UserWishlistSummaryDto>(
+    `/api/wishlists/users/${userId}`,
+    { method: "GET" },
+    true,
+  );
+
+  return mapWishlistSummaryDto(wishlist);
+}
+
+export async function addItemToWishlist(
+  userId: number,
+  payload: WishlistAddItemRequest,
+): Promise<UserWishlistSummary> {
+  const requestBody: WishlistAddItemRequestDto = { itemId: payload.itemId };
+  const wishlist = await apiRequest<UserWishlistSummaryDto>(
+    `/api/wishlists/users/${userId}/items`,
+    {
+      method: "POST",
+      body: JSON.stringify(requestBody),
+    },
+    true,
+  );
+
+  return mapWishlistSummaryDto(wishlist);
+}
+
+export async function removeItemFromWishlist(userId: number, itemId: number): Promise<void> {
+  await apiRequest<void>(
+    `/api/wishlists/users/${userId}/items/${itemId}`,
+    {
+      method: "DELETE",
+    },
+    true,
+  );
+}
+
+export async function clearWishlistByUserId(userId: number): Promise<void> {
+  await apiRequest<void>(
+    `/api/wishlists/users/${userId}`,
     {
       method: "DELETE",
     },

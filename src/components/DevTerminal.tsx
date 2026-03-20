@@ -93,19 +93,6 @@ export default function DevTerminal() {
 
   return (
     <>
-      {!isOpen ? (
-        <button
-          type="button"
-          onClick={() => setIsOpen(true)}
-          className={`fixed bottom-16 right-3 ui-button-secondary px-2 py-1 text-xs ${
-            isCartOpen ? "z-10 pointer-events-none opacity-60" : "z-40"
-          }`}
-          aria-label="Open dev terminal"
-          title="Ctrl+Shift+C"
-        >
-          Terminal
-        </button>
-      ) : null}
 
       {isOpen ? (
         <section
