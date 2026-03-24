@@ -180,6 +180,50 @@ npm run start
 npm run lint
 ```
 
+## Deploy Frontend With Docker
+
+This repository includes a production `Dockerfile` and `docker-compose.yml` for the frontend.
+
+### 1) Configure environment
+
+Set the API URL your frontend should call (or keep the default):
+
+```bash
+cp .env.example .env
+```
+
+Update `.env` if needed:
+
+```env
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8088
+```
+
+### 2) Build and run the container
+
+```bash
+docker compose up --build -d
+```
+
+### 3) Verify
+
+Open:
+
+```text
+http://localhost:3000
+```
+
+Check logs:
+
+```bash
+docker compose logs -f frontend
+```
+
+Stop when done:
+
+```bash
+docker compose down
+```
+
 ## Authentication Notes
 
 This project currently uses a simple client-side approach for learning purposes:
